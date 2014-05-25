@@ -1,7 +1,8 @@
 -module(geneticos).
 -import(lists,[append/2]).
+-import(string,[concat/2]).
 -export([generarPoblacion/2, chocaColumna/2, cant_choca/1, choca/1, chocaDiagonal/2, getAt/2, mejorDePoblacion/1, seleccion/2, eliminarDePoblacion/2]). 
--export([corte/3, largo/1, cruce/3, reemplazarEnPoblacion/3, agregarCruce/2, crearNuevaPoblacion/3, mutar/2]).
+-export([corte/3, largo/1, cruce/3, reemplazarEnPoblacion/3, agregarCruce/2, crearNuevaPoblacion/3, mutar/2, crearFila/2, printIndividuo/1, imprimirPoblacion/1]).
 
 %Obtiene el elemento de una lista dada una posición.
 %Recibe: L = Lista de elementos.
@@ -18,7 +19,7 @@ largo([_H|T])-> 1+largo(T).
 
 
 %Crea la población inicial.
-% Recibe: N = Cantidad de individuos a generar.
+% Recibe: N = Tamaño del individuo.
 %		  T = Tamaño de la población.
 generarPoblacion(N, T)-> generarPoblacion(N, T, 1, [crearGen(N, 1, [random:uniform(N)])]).
 
@@ -29,6 +30,28 @@ generarPoblacion(N, T)-> generarPoblacion(N, T, 1, [crearGen(N, 1, [random:unifo
 %Retorna: Matriz o lista de individuos creados.
 generarPoblacion(_N, T, T, M)-> M;
 generarPoblacion(N, T, C, M)-> generarPoblacion(N, T, C+1, append(M, [crearGen(N, 0, [])])).
+
+
+%------------------------------------Funciones para impresión de la población---------------------------------------------------------------------
+crearFila(Pos, N)-> crearFila(Pos, N+1, 1, "").
+crearFila(_Pos, N, N, Res)-> [Res];
+crearFila(Pos, N, Pos, Res)-> crearFila(Pos, N, Pos+1, concat(Res, " Q "));
+crearFila(Pos, N, C, Res)-> crearFila(Pos, N, C+1, concat(Res, " _ ")).
+
+printIndividuo([H|T])-> printIndividuo(T, largo([H|T]), [crearFila(H, largo([H|T]))]).
+printIndividuo([], _N, Res)-> Res;
+printIndividuo([H|T], N, Res)-> printIndividuo(T, N, append(Res, [crearFila(H, N)])).
+
+agregarEspacio(N)-> agregarEspacio(N+1, 1, "").
+agregarEspacio(N, N, Res)->[Res];
+agregarEspacio(N, C, Res)-> agregarEspacio(N, C+1, concat(Res," ")).
+
+%Población a imprimir
+imprimirPoblacion(P)-> imprimirPoblacion(P, largo(P)+1, 1, []).
+imprimirPoblacion([], N, N, Res)->Res;
+imprimirPoblacion([[H|T]|REST], N, C, Res)-> imprimirPoblacion(REST, N, C+1, append(append(Res, printIndividuo([H|T])), agregarEspacio(N))).
+
+%--------------------------------------------------------------------------------------------------------------------------------------------------
 
 %Crea una lista con posiciones, que indican la posicion donde se encuentra la reina en la fila.
 % Recibe: N = Cantidad de posiciones a generar.
