@@ -2,35 +2,37 @@
 -import(lists,[append/2]).
 -import(string,[concat/2]).
 -export([generarPoblacion/2, chocaColumna/2, cant_choca/1, choca/1, chocaDiagonal/2, getAt/2, mejorDePoblacion/1, seleccion/2, eliminarDePoblacion/2]). 
--export([corte/3, largo/1, cruce/3, reemplazarEnPoblacion/3, agregarCruce/2, crearNuevaPoblacion/3, mutar/2, crearFila/2, printIndividuo/1, imprimirPoblacion/1]).
+-export([fitness2/1, fitness/1, shuffle/1, corte/3, cruce/3, reemplazarEnPoblacion/3, agregarCruce/2, crearNuevaPoblacion/3, mutar/2, crearFila/2, printIndividuo/1, imprimirPoblacion/1]).
 
 %Obtiene el elemento de una lista dada una posición.
 %Recibe: L = Lista de elementos.
 %		 N = Posición de la lista.
 %Retorna: Elemento en la posición indicada.	
-getAt([], _N)-> [];		
+getAt([], _N)-> [];
 getAt(L, N)-> getAt(L, N, 1).
 getAt([H|_T], N, N)-> H;
 getAt([_H|T], N, C)-> getAt(T, N, C+1).
 
-%Calcula el largo de una lista.
-largo([])->0;
-largo([_H|T])-> 1+largo(T).
+shuffle(L) -> shuffle(L, []).
+shuffle([], Acc) -> Acc;
+shuffle(L, Acc) -> {Leading, [H|T]} = lists:split(random:uniform(length(L))-1, L), shuffle(Leading ++ T, [H|Acc]).
 
+iota(N) -> iota(N, 1).
+iota(N, N) -> [N];
+iota(N, C) -> [C] ++ iota(N, C+1).
 
 %Crea la población inicial.
 % Recibe: N = Tamaño del individuo.
 %		  T = Tamaño de la población.
-generarPoblacion(N, T)-> generarPoblacion(N, T, 1, [crearGen(N, 1, [random:uniform(N)])]).
+generarPoblacion(N, T) -> generarPoblacion(N, T, 0).
 
 % Recibe: N = Cantidad de individuos a generar.
 %		  T = Tamaño de la poplación.
 %		  C = Contador de individuos.
 %		  M = Lista que contiene los individuos(Listas de posiciones).
 %Retorna: Matriz o lista de individuos creados.
-generarPoblacion(_N, T, T, M)-> M;
-generarPoblacion(N, T, C, M)-> generarPoblacion(N, T, C+1, append(M, [crearGen(N, 0, [])])).
-
+generarPoblacion(_N, T, T) -> [];
+generarPoblacion(N, T, C) -> [crearIndividuo(N)] ++ generarPoblacion(N, T, C+1).
 
 %------------------------------------Funciones para impresión de la población---------------------------------------------------------------------
 crearFila(Pos, N)-> crearFila(Pos, N+1, 1, "").
@@ -38,7 +40,7 @@ crearFila(_Pos, N, N, Res)-> [Res];
 crearFila(Pos, N, Pos, Res)-> crearFila(Pos, N, Pos+1, concat(Res, " Q "));
 crearFila(Pos, N, C, Res)-> crearFila(Pos, N, C+1, concat(Res, " _ ")).
 
-printIndividuo([H|T])-> printIndividuo(T, largo([H|T]), [crearFila(H, largo([H|T]))]).
+printIndividuo([H|T])-> printIndividuo(T, length([H|T]), [crearFila(H, length([H|T]))]).
 printIndividuo([], _N, Res)-> Res;
 printIndividuo([H|T], N, Res)-> printIndividuo(T, N, append(Res, [crearFila(H, N)])).
 
@@ -47,19 +49,16 @@ agregarEspacio(N, N, Res)->[Res];
 agregarEspacio(N, C, Res)-> agregarEspacio(N, C+1, concat(Res," ")).
 
 %Población a imprimir
-imprimirPoblacion(P)-> imprimirPoblacion(P, largo(P)+1, 1, []).
+imprimirPoblacion(P)-> imprimirPoblacion(P, length(P)+1, 1, []).
 imprimirPoblacion([], N, N, Res)->Res;
 imprimirPoblacion([[H|T]|REST], N, C, Res)-> imprimirPoblacion(REST, N, C+1, append(append(Res, printIndividuo([H|T])), agregarEspacio(N))).
 
 %--------------------------------------------------------------------------------------------------------------------------------------------------
 
 %Crea una lista con posiciones, que indican la posicion donde se encuentra la reina en la fila.
-% Recibe: N = Cantidad de posiciones a generar.
-%		  N = Contador de posiciones.
-%		  L = Lista de posiciones.
-%Retorna: Lista de posiciones o nuevo individuo.
-crearGen(N, N, L)-> L;
-crearGen(N, C, L)-> crearGen(N, C+1, append(L, [random:uniform(N)])).
+%Recibe: N = Cantidad de genes del individuo.
+%Retorna: Nuevo individuo.
+crearIndividuo(N) -> shuffle(iota(N)).
 
 %Indica si una reina choca con otra en la misma columna.
 %Recibe: L = Lista o individuo a revisar.
@@ -102,7 +101,7 @@ choca([H|T], Collide)->
 
 %Indica la cantidad de veces que una reina choca con otra en un individuo.
 %Recibe: L = Lista o individuo a revisar.
-cant_choca([])->0;
+cant_choca([]) -> 0;
 cant_choca([H|T])-> cant_choca(T, chocaColumna(T, H) or chocaDiagonal(T, H), 0).
 
 %Indica la cantidad de veces que chocan las reinas en un individuo.
@@ -119,16 +118,25 @@ cant_choca([H|T], Collide, C)->
 %Función de fitness.
 fitness([H|T])->cant_choca([H|T]).
 
-%Función que indica el mejor individuo de una pobloación.
-%Recibe: M = Matriz o lista de individuos de la población.
-mejorDePoblacion([[H|T]|REST])->mejorDePoblacion(REST, [H|T], fitness([H|T])).
+fitness2([]) -> 0;
+fitness2([Reina|RestoTablero]) -> cant_choca2(Reina, RestoTablero) + fitness2(RestoTablero).
+
+chocaColumna2(Reina, Reina, _Profundidad) -> 1;
+chocaColumna2(_Reina, _Tablero, _Profundidad) -> 0.
+
+chocaDiagonalIzquierda(Reina, Fila, Profundidad) when Reina == Fila - Profundidad -> 1;
+chocaDiagonalIzquierda(_Reina, _Tablero, _Profundidad) -> 0.
+
+chocaDiagonalDerecha(Reina, Fila, Profundidad) when Reina == Fila + Profundidad -> 1;
+chocaDiagonalDerecha(_Reina, _Tablero, _Profundidad) -> 0.
+
+cant_choca2(Reina, Tablero) -> cant_choca2(Reina, Tablero, 1).
+cant_choca2(_Reina, [], _Profundidad) -> 0;
+cant_choca2(Reina, [Fila|RestoTablero], Profundidad) -> chocaColumna2(Reina, Fila, Profundidad)  + chocaDiagonalIzquierda(Reina, Fila, Profundidad) + chocaDiagonalDerecha(Reina, Fila, Profundidad) + cant_choca2(Reina, RestoTablero, Profundidad+1).
 
 %Función que indica el mejor individuo de una pobloación.
 %Recibe: M = Matriz o lista de individuos de la población.
-%		 L = Mejor individuo encontrado hasta el momento.
-%		 R = fitness del individuo.
-mejorDePoblacion([], L, _R)->L;
-mejorDePoblacion([[H|T]|REST], L, R)->mejorDePoblacion([[H|T]|REST], R, fitness([H|T]), L).
+mejorDePoblacion([Individuo|RestoPoblacion]) -> mejorDePoblacion([Individuo|RestoPoblacion], fitness(Individuo), fitness(Individuo), Individuo).
 
 %Función que indica el mejor individuo de una pobloación.
 %Recibe: M = Matriz o lista de individuos de la población.
@@ -136,10 +144,10 @@ mejorDePoblacion([[H|T]|REST], L, R)->mejorDePoblacion([[H|T]|REST], R, fitness(
 %		 R = fitness del mejor individuo encontrado.
 %		 R2 = fitness del segundo individuo a comparar.
 %		 BEST = Mejor individuo encontrado.
-mejorDePoblacion([], _R, _R2, BEST)->BEST;
-mejorDePoblacion([[H|T]|REST], R, R2, BEST) when R2 >= R ->mejorDePoblacion(REST, R, fitness([H|T]), BEST);
-mejorDePoblacion([[H|T]|REST], R, R2, _BEST) when R > R2 ->mejorDePoblacion(REST, R2, fitness([H|T]), [H|T]).
-
+mejorDePoblacion([Individuo], ActualFitness, MejorFitness, _MejorIndividuo) when ActualFitness < MejorFitness -> Individuo;
+mejorDePoblacion([_Individuo], _ActualFitness, _MejorFitness, MejorIndividuo) -> MejorIndividuo;
+mejorDePoblacion([Individuo|[SiguienteIndividuo|RestoPoblacion]], ActualFitness, MejorFitness, _MejorIndividuo) when ActualFitness < MejorFitness -> mejorDePoblacion([SiguienteIndividuo|RestoPoblacion], fitness(SiguienteIndividuo), ActualFitness, Individuo);
+mejorDePoblacion([_Individuo|[SiguienteIndividuo|RestoPoblacion]], _ActualFitness, MejorFitness, MejorIndividuo) -> mejorDePoblacion([SiguienteIndividuo|RestoPoblacion], fitness(SiguienteIndividuo), MejorFitness, MejorIndividuo).
 
 %Función que elimina un individuo de la población.
 %Recibe: P = Población.
@@ -191,8 +199,8 @@ mutarEnPosicion([H|T], N, Pos, C, Res)-> mutarEnPosicion(T, N, Pos, C+1, append(
 %Retorna: Lista con los 2 nuevos individuos.
 cruce(G1, G2, P)->cruce_aux(G1, G2, P, random:uniform()).
 cruce_aux(G1, G2, P, Rand)->
-if(P >= Rand)-> cruce(corte(mutar(G1, largo(G1)), G2, largo(G1)));
-	true->cruce(corte(G1, G2, largo(G1)))
+if(P >= Rand)-> cruce(corte(mutar(G1, length(G1)), G2, length(G1)));
+	true->cruce(corte(G1, G2, length(G1)))
 end.
 cruce(M)-> append([getAt(M,1)++getAt(M,4)], [getAt(M,2)++getAt(M,3)]).
 
