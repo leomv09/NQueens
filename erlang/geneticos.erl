@@ -1,9 +1,9 @@
 -module(geneticos).
 -import(lists,[append/2]).
 -import(string,[concat/2]).
--export([generarPoblacion/2, chocaColumna/2, cant_choca/1, choca/1, chocaDiagonal/2, getAt/2, mejorDePoblacion/1, seleccion/2, eliminarDePoblacion/2]). 
--export([fitness2/1, fitness/1, shuffle/1, corte/3, cruce/3, reemplazarEnPoblacion/3, agregarCruce/2, crearNuevaPoblacion/3, mutar/2, crearFila/2, printIndividuo/1, imprimirPoblacion/1]).
-
+-export([generarPoblacion/2, chocaColumna/3, cant_choca/2,  chocaDiagonalDerecha/3, chocaDiagonalIzquierda/3, getAt/2, mejorDePoblacion/1, seleccion/2, eliminarDePoblacion/2]). 
+-export([fitness/1, shuffle/1, corte/3, cruce/3, agregarCruce/2, crearNuevaPoblacion/3, mutar/2, crearFila/2, printIndividuo/1, imprimirPoblacion/1]).
+-export([solucion/1, nreinas/3, generarTabla/1, sumaFitness/1, generarAcumulada/1, seleccionarDeTabla/3]).
 %Obtiene el elemento de una lista dada una posición.
 %Recibe: L = Lista de elementos.
 %		 N = Posición de la lista.
@@ -21,8 +21,9 @@ iota(N) -> iota(N, 1).
 iota(N, N) -> [N];
 iota(N, C) -> [C] ++ iota(N, C+1).
 
+
 %Crea la población inicial.
-% Recibe: N = Tamaño del individuo.
+% Recibe: N = Tamaño del tablero.
 %		  T = Tamaño de la población.
 generarPoblacion(N, T) -> generarPoblacion(N, T, 0).
 
@@ -60,79 +61,42 @@ imprimirPoblacion([[H|T]|REST], N, C, Res)-> imprimirPoblacion(REST, N, C+1, app
 %Retorna: Nuevo individuo.
 crearIndividuo(N) -> shuffle(iota(N)).
 
-%Indica si una reina choca con otra en la misma columna.
-%Recibe: L = Lista o individuo a revisar.
-%		 R = Reina a revisar con los demás números del individuo.
-chocaColumna([], _R)-> false;
-chocaColumna([H|T], R)->
- 	if(H =:= R)-> true;
- 		true-> chocaColumna(T, R)
- 	end.
 
-%Indica si una reina choca con otra en diagonal.
-%Recibe: L = Lista o individuo a revisar.
-%		 N = Número a revisar con los demás números del individuo.
-chocaDiagonal([], _N)->false;
-chocaDiagonal(L, B)-> chocaDiagonal(L, B, 1).
 
-%Indica si una reina choca con otra en diagonal.
-%Recibe: L = Lista o individuo a revisar.
-%		 R = Reina a revisar.
-%		 N = nésima reina del individuo.
-chocaDiagonal([], _R, _N)-> false;
-chocaDiagonal([H|T], R, N)->
-if((H =:= (R+N)) or (H =:= (R-N)))-> true;
-	true->chocaDiagonal(T, R, N+1)
-end.
-
-%Indica si una reina choca con otra.
-%Recibe: L = Lista o individuo a revisar.
-choca([])->false;
-choca([H|T])-> choca(T, chocaColumna(T, H) or chocaDiagonal(T, H)).
-
-%Indica si una reina choca con otra.
-%Recibe: L = Lista o individuo a revisar.
-%		 Collide = valor que indica si choca.
-choca([], _Collide)->false;
-choca([H|T], Collide)->
-	if(Collide)->true;
-		true->choca(T, chocaColumna(T, H) or chocaDiagonal(T, H))
-	end.
-
-%Indica la cantidad de veces que una reina choca con otra en un individuo.
-%Recibe: L = Lista o individuo a revisar.
-cant_choca([]) -> 0;
-cant_choca([H|T])-> cant_choca(T, chocaColumna(T, H) or chocaDiagonal(T, H), 0).
-
-%Indica la cantidad de veces que chocan las reinas en un individuo.
-%Recibe: L = Lista o individuo a revisar.
-%		 Collide = valor que indica si choca.
-%		 C = Contador de veces que choca la reina.
-%Retorna: Cnatidad de veces que chocan las reinas en un individuo.
-cant_choca([], _Collide, C)->C;
-cant_choca([H|T], Collide, C)->
-	if(Collide)->cant_choca(T, chocaColumna(T, H) or chocaDiagonal(T, H), C+1);
-		true->cant_choca(T, chocaColumna(T, H) or chocaDiagonal(T, H), C)
-	end.
 
 %Función de fitness.
-fitness([H|T])->cant_choca([H|T]).
 
-fitness2([]) -> 0;
-fitness2([Reina|RestoTablero]) -> cant_choca2(Reina, RestoTablero) + fitness2(RestoTablero).
+fitness([]) -> 0;
+fitness([Reina|RestoTablero]) -> cant_choca(Reina, RestoTablero) + fitness(RestoTablero).
 
-chocaColumna2(Reina, Reina, _Profundidad) -> 1;
-chocaColumna2(_Reina, _Tablero, _Profundidad) -> 0.
+%Indica si una reina choca con otra en la misma columna.
+%Recibe: R = Reina a revisar con los demás números del individuo.
+%		 
+chocaColumna(Reina, Reina, _Profundidad) -> 1;
+chocaColumna(_Reina, _Tablero, _Profundidad) -> 0.
 
+%Indica la candtidad de veces que una reina choca con otra en la diagonal izquierda.
+%Recibe: Reina = Reina a revisar.
+%		 N = Fila donde está la reina.
+%		 Profundidad = 
 chocaDiagonalIzquierda(Reina, Fila, Profundidad) when Reina == Fila - Profundidad -> 1;
 chocaDiagonalIzquierda(_Reina, _Tablero, _Profundidad) -> 0.
 
+
+%Indica la candtidad de veces que una reina choca con otra en la diagonal derecha.
+%Recibe: Reina = Reina a revisar.
+%		 N = Fila donde está la reina.
+%		 Profundidad = 
 chocaDiagonalDerecha(Reina, Fila, Profundidad) when Reina == Fila + Profundidad -> 1;
 chocaDiagonalDerecha(_Reina, _Tablero, _Profundidad) -> 0.
 
-cant_choca2(Reina, Tablero) -> cant_choca2(Reina, Tablero, 1).
-cant_choca2(_Reina, [], _Profundidad) -> 0;
-cant_choca2(Reina, [Fila|RestoTablero], Profundidad) -> chocaColumna2(Reina, Fila, Profundidad)  + chocaDiagonalIzquierda(Reina, Fila, Profundidad) + chocaDiagonalDerecha(Reina, Fila, Profundidad) + cant_choca2(Reina, RestoTablero, Profundidad+1).
+%Indica la cantidad de veces que chocan las reinas en un individuo.
+%Recibe: Reina = Reina a revisar.
+%		 Tablero = El tablero a revisar.
+%Retorna: Cnatidad de veces que choca una reina en el tablero.
+cant_choca(Reina, Tablero) -> cant_choca(Reina, Tablero, 1).
+cant_choca(_Reina, [], _Profundidad) -> 0;
+cant_choca(Reina, [Fila|RestoTablero], Profundidad) -> chocaColumna(Reina, Fila, Profundidad)  + chocaDiagonalIzquierda(Reina, Fila, Profundidad) + chocaDiagonalDerecha(Reina, Fila, Profundidad) + cant_choca(Reina, RestoTablero, Profundidad+1).
 
 %Función que indica el mejor individuo de una pobloación.
 %Recibe: M = Matriz o lista de individuos de la población.
@@ -157,15 +121,40 @@ eliminarDePoblacion([], [_H|_T])-> [];
 eliminarDePoblacion([[H|T]|REST], [H|T])-> REST;
 eliminarDePoblacion([[H|T]|REST], [H2|T2])-> [[H|T]|eliminarDePoblacion(REST, [H2|T2])].
 
+%Suma el fitness de todos los individuos de una población.
+sumaFitness([])->0;
+sumaFitness([Individuo|Resto])-> (length(Individuo)-fitness(Individuo)) + sumaFitness(Resto).
+
+%Genera una tabla acumulada de las probabilidades de cada individuo.
+generarAcumulada([H|T])-> generarAcumulada(T, H, [H]).
+generarAcumulada([], _VA, T)-> T;
+generarAcumulada([H|T], VA, Tabla)-> generarAcumulada(T, H+VA, Tabla++[H+VA]).
+
+%Genera una tabla con las probabilidades de selección de cada individuo.
+generarTabla([Individuo|Resto])-> generarTabla(Resto, [Individuo|Resto], [(length(Individuo)-fitness(Individuo))/sumaFitness([Individuo|Resto])]).
+generarTabla([], _P, T)-> T;
+generarTabla([Individuo|Resto], P, T)-> generarTabla(Resto, P, T++[(length(Individuo)-fitness(Individuo))/sumaFitness(P)]).
+
+
+%Selecciona un individuo a partir de una tabla acumulada y un valor al azar.
+%Recibe: Tabla =  Tabla acumulada.
+%		 P = Población.
+%		 Valor = Valor al azar.
+%Retorna: El individuo seleccionado a partir de la probabilidad.
+seleccionarDeTabla([], _P, _Valor)->[];
+seleccionarDeTabla([H|_T], [Individuo|_Resto], Valor) when H >= Valor-> Individuo;
+seleccionarDeTabla([H|T], [_Individuo|Resto], Valor) when H < Valor-> seleccionarDeTabla(T, Resto, Valor).
 
 %Función que realiza la selección de los 2 genes a cruzar.
 %Recibe: P = Población
 %		 TP: Tamaño de la población.
 %Retorna: Una lista con los dos individuos a cruzar.
-seleccion([[H|T]|REST], TP)->
-if (TP >= 2)->append([getAt([[H|T]|REST], random:uniform(TP))], [getAt([[H|T]|REST], random:uniform(TP))]);
-	true->[H|T]
+seleccion([Individuo|Resto], TP)->
+if (TP >= 2)->seleccion([Individuo|Resto], TP, [seleccionarDeTabla(generarAcumulada(generarTabla([Individuo|Resto])), [Individuo|Resto], random:uniform())]);
+	true->Individuo
 end.
+%Sele: Primer individuo selecto(para eliminar de la población).
+seleccion([Individuo|Resto], _TP, Sele)-> Sele++[seleccionarDeTabla(generarAcumulada(generarTabla(eliminarDePoblacion([Individuo|Resto], Sele))), eliminarDePoblacion([Individuo|Resto], Sele), random:uniform())].
 
 %Función que realiza el corte de los genes para el cruce.
 %Recibe: G1 = Primer gen a realizarle el corte.
@@ -204,24 +193,6 @@ if(P >= Rand)-> cruce(corte(mutar(G1, length(G1)), G2, length(G1)));
 end.
 cruce(M)-> append([getAt(M,1)++getAt(M,4)], [getAt(M,2)++getAt(M,3)]).
 
-%Función que determina el peor de 2 genes.
-%Recibe: G1 = Primer gen a evaluar.
-%		 G2 = Segundo gen a evaluar.
-%Retorna el peor gen de los 2. 
-peorGen(G1, G2)-> peorGen(G1, fitness(G1), G2, fitness(G2)).
-peorGen(G1, F1, _G2, F2) when F1 >= F2 -> G1;
-peorGen(_G1, F1, G2, F2) when F1 < F2 -> G2.
-
-
-%Función que reemplaza el peor gen de una plobación por el mejor gen.
-%Recibe: P = Población.
-%		 M = Matriz o lista de genes, que contiene el resultado de la selcción.
-%Retorna: La población con el individuo reemplazado.
-reemplazarEnPoblacion(P, M)-> reemplazarEnPoblacion(P, peorGen(getAt(M, 1), getAt(M, 2)), mejorDePoblacion(M)).
-%E: Individuo a reemplazar.
-%R: Individuo a agregar por el eliminado.
-reemplazarEnPoblacion(P, E, R)-> reemplazarEnPoblacion_aux(eliminarDePoblacion(P, E), R).
-reemplazarEnPoblacion_aux(P, R)-> append(P, [R]).
 
 
 %Función que agrega el cruce a la nueva población.
@@ -237,20 +208,39 @@ agregarCruce(P, [[H|T]|REST])-> append(append(P, [[H|T]]), REST).
 %		 N = Cantidad de individuos a crear.
 %		 P = Probabilidad de mutación.
 %Retorna: Una lista de individuos, lo que es la nueva población.
-crearNuevaPoblacion(PV, N, P)-> crearNuevaPoblacion(PV, N, P, 0, seleccion(PV, N)).
+crearNuevaPoblacion(PV, N, P)-> crearNuevaPoblacion(PV, N, P, 0, seleccion(PV, length(PV))).
 %C: Contador de individuos.
 %Sele: Resultado de la selección.
-crearNuevaPoblacion(PV, N, P, C, [[H|T]|REST])-> crearNuevaPoblacion(reemplazarEnPoblacion(PV, [[H|T]|REST]), N, P, C, 
-													seleccion(reemplazarEnPoblacion(PV, [[H|T]|REST]), N), cruce(getAt([[H|T]|REST], 1), getAt([[H|T]|REST], 2), P),
+crearNuevaPoblacion(PV, N, P, C, [[H|T]|REST])-> crearNuevaPoblacion(PV, N, P, C, 
+													seleccion(PV, length(PV)), cruce(getAt([[H|T]|REST], 1), getAt([[H|T]|REST], 2), P),
 													[]).
 %Cru: Resultado del cruce.
 %NP: La nueva población.
 crearNuevaPoblacion(_PV, N, _P, C, _Sele, _Cru, NP) when C >= N -> NP;
-crearNuevaPoblacion(PV, N, P, C, [[H|T]|REST], Cru, NP)-> crearNuevaPoblacion(reemplazarEnPoblacion(PV, [[H|T]|REST]), N, P, C+2, 
-													seleccion(reemplazarEnPoblacion(PV, [[H|T]|REST]), N), cruce(getAt([[H|T]|REST], 1), getAt([[H|T]|REST], 2), P),
+crearNuevaPoblacion(PV, N, P, C, [[H|T]|REST], Cru, NP)-> crearNuevaPoblacion(PV, N, P, C+2, 
+													seleccion(PV, length(PV)), cruce(getAt([[H|T]|REST], 1), getAt([[H|T]|REST], 2), P),
 													agregarCruce(NP, Cru)).
 
 
+%Función que indica si hay un individuo solución dentro de una pobalación.
+%Recibe: Población.
+%Retorna: El individuo solución.
+solucion([Individuo|Resto])->solucion(Resto, fitness(Individuo), Individuo).
+solucion([], F, S)-> 
+	if(F==0)->S;
+		true->[]
+	end;
+solucion([Individuo|Resto], F, _S) when F > 0-> solucion(Resto, fitness(Individuo), Individuo);
+solucion([_Individuo|_Resto], F, S) when F == 0-> S.
 
- 
+%Función que a partir de una población al azar genera una solución.
+%Recibe: N = Tamaño del tablero.
+%		 Pob = Tamaño de la población.
+%		 Mut = Probabilidad de mutación.
+nreinas(N, Pob, Mut)-> nreinas(N, Pob, Mut, generarPoblacion(N, Pob)).
+nreinas(N, Pob, Mut, P)-> nreinas(N, Pob, Mut, P, solucion(P)).
+nreinas(N, Pob, Mut, P, S)-> 
+	if(S==[])-> nreinas(N, Pob, Mut, crearNuevaPoblacion(P, Pob, Mut), solucion(P));
+		true-> S
+	end.
 
