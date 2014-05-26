@@ -2,7 +2,7 @@
 -import(lists,[append/2]).
 -import(string,[concat/2]).
 -export([generarPoblacion/2, chocaColumna/3, cant_choca/2,  chocaDiagonalDerecha/3, chocaDiagonalIzquierda/3, getAt/2, mejorDePoblacion/1, seleccion/2, eliminarDePoblacion/2]). 
--export([fitness/1, shuffle/1, corte/3, cruce/3, agregarCruce/2, crearNuevaPoblacion/3, mutar/2, crearFila/2, printIndividuo/1, imprimirPoblacion/1]).
+-export([fitness/1, shuffle/1, corte/3, cruce/2, agregarCruce/2, crearNuevaPoblacion/3, mutar/2, crearFila/2, printIndividuo/1, imprimirPoblacion/1]).
 -export([solucion/1, nreinas/3, generarTabla/1, sumaFitness/1, generarAcumulada/1, seleccionarDeTabla/3]).
 %Obtiene el elemento de una lista dada una posición.
 %Recibe: L = Lista de elementos.
@@ -63,9 +63,6 @@ crearIndividuo(N) -> shuffle(iota(N)).
 
 
 
-
-%Función de fitness.
-
 fitness([]) -> 0;
 fitness([Reina|RestoTablero]) -> cant_choca(Reina, RestoTablero) + fitness(RestoTablero).
 
@@ -122,8 +119,8 @@ eliminarDePoblacion([[H|T]|REST], [H|T])-> REST;
 eliminarDePoblacion([[H|T]|REST], [H2|T2])-> [[H|T]|eliminarDePoblacion(REST, [H2|T2])].
 
 %Suma el fitness de todos los individuos de una población.
-sumaFitness([])->0;
-sumaFitness([Individuo|Resto])-> (length(Individuo)-fitness(Individuo)) + sumaFitness(Resto).
+sumaFitness([])->0;%Para maximizar el fitness es la cantidad de veces que choca menos el tamaño del tablero N*N, no solamente N.
+sumaFitness([Individuo|Resto])-> ((length(Individuo)*length(Individuo)) - fitness(Individuo)) + sumaFitness(Resto).
 
 %Genera una tabla acumulada de las probabilidades de cada individuo.
 generarAcumulada([H|T])-> generarAcumulada(T, H, [H]).
@@ -131,9 +128,9 @@ generarAcumulada([], _VA, T)-> T;
 generarAcumulada([H|T], VA, Tabla)-> generarAcumulada(T, H+VA, Tabla++[H+VA]).
 
 %Genera una tabla con las probabilidades de selección de cada individuo.
-generarTabla([Individuo|Resto])-> generarTabla(Resto, [Individuo|Resto], [(length(Individuo)-fitness(Individuo))/sumaFitness([Individuo|Resto])]).
+generarTabla([Individuo|Resto])-> generarTabla(Resto, [Individuo|Resto], [((length(Individuo)*length(Individuo)) - fitness(Individuo))/sumaFitness([Individuo|Resto])]).
 generarTabla([], _P, T)-> T;
-generarTabla([Individuo|Resto], P, T)-> generarTabla(Resto, P, T++[(length(Individuo)-fitness(Individuo))/sumaFitness(P)]).
+generarTabla([Individuo|Resto], P, T)-> generarTabla(Resto, P, T++[((length(Individuo)*length(Individuo)) - fitness(Individuo))/sumaFitness(P)]).
 
 
 %Selecciona un individuo a partir de una tabla acumulada y un valor al azar.
@@ -186,6 +183,7 @@ mutarEnPosicion([H|T], N, Pos, C, Res)-> mutarEnPosicion(T, N, Pos, C+1, append(
 %		 G2 = El segundo gen a cruzar.
 %		 P = Probabilidad de mutación.
 %Retorna: Lista con los 2 nuevos individuos.
+cruce(P, Prob)->cruce(getAt(P, 1), getAt(P, 2), Prob).
 cruce(G1, G2, P)->cruce_aux(G1, G2, P, random:uniform()).
 cruce_aux(G1, G2, P, Rand)->
 if(P >= Rand)-> cruce(corte(mutar(G1, length(G1)), G2, length(G1)));
@@ -208,18 +206,12 @@ agregarCruce(P, [[H|T]|REST])-> append(append(P, [[H|T]]), REST).
 %		 N = Cantidad de individuos a crear.
 %		 P = Probabilidad de mutación.
 %Retorna: Una lista de individuos, lo que es la nueva población.
-crearNuevaPoblacion(PV, N, P)-> crearNuevaPoblacion(PV, N, P, 0, seleccion(PV, length(PV))).
+crearNuevaPoblacion(PV, N, P)-> crearNuevaPoblacion(PV, N, P, 0, cruce(seleccion(PV, length(PV)), P), []).
 %C: Contador de individuos.
-%Sele: Resultado de la selección.
-crearNuevaPoblacion(PV, N, P, C, [[H|T]|REST])-> crearNuevaPoblacion(PV, N, P, C, 
-													seleccion(PV, length(PV)), cruce(getAt([[H|T]|REST], 1), getAt([[H|T]|REST], 2), P),
-													[]).
-%Cru: Resultado del cruce.
 %NP: La nueva población.
-crearNuevaPoblacion(_PV, N, _P, C, _Sele, _Cru, NP) when C >= N -> NP;
-crearNuevaPoblacion(PV, N, P, C, [[H|T]|REST], Cru, NP)-> crearNuevaPoblacion(PV, N, P, C+2, 
-													seleccion(PV, length(PV)), cruce(getAt([[H|T]|REST], 1), getAt([[H|T]|REST], 2), P),
-													agregarCruce(NP, Cru)).
+crearNuevaPoblacion(_PV, N, _P, C, _Cru, NP) when C >= N -> NP;
+crearNuevaPoblacion(PV, N, P, C, Cru, NP)-> crearNuevaPoblacion(PV, N, P, C+1, cruce(seleccion(PV, length(PV)), P), agregarCruce(NP, Cru)).
+
 
 
 %Función que indica si hay un individuo solución dentro de una pobalación.
