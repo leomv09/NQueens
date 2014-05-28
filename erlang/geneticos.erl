@@ -1,9 +1,9 @@
 -module(geneticos).
--import(lists,[append/2]).
+-import(lists,[append/2, split/2]).
 -import(string,[concat/2]).
 -export([generarPoblacion/2, chocaColumna/3, cant_choca/2,  chocaDiagonalDerecha/3, chocaDiagonalIzquierda/3, getAt/2, mejorDePoblacion/1, seleccion/2, eliminarDePoblacion/2]). 
--export([fitness/1, shuffle/1, corte/3, cruce/2, agregarCruce/2, crearNuevaPoblacion/3, mutar/2, crearFila/2, printIndividuo/1, imprimirPoblacion/1]).
--export([solucion/1, nreinas/3, generarTabla/1, sumaFitness/1, generarAcumulada/1, seleccionarDeTabla/3]).
+-export([fitness/1, shuffle/1, corte/2, cruce/2, cruce/1, agregarCruce/2, crearNuevaPoblacion/4, mutar/2, crearFila/2, printIndividuo/1, imprimirPoblacion/1]).
+-export([solucion/1, nreinas/4, generarTabla/1, sumaFitness/1, generarAcumulada/1, seleccionarDeTabla/3]).
 %Obtiene el elemento de una lista dada una posición.
 %Recibe: L = Lista de elementos.
 %		 N = Posición de la lista.
@@ -60,8 +60,6 @@ imprimirPoblacion([[H|T]|REST], N, C, Res)-> imprimirPoblacion(REST, N, C+1, app
 %Recibe: N = Cantidad de genes del individuo.
 %Retorna: Nuevo individuo.
 crearIndividuo(N) -> shuffle(iota(N)).
-
-
 
 fitness([]) -> 0;
 fitness([Reina|RestoTablero]) -> cant_choca(Reina, RestoTablero) + fitness(RestoTablero).
@@ -132,7 +130,6 @@ generarTabla([Individuo|Resto])-> generarTabla(Resto, [Individuo|Resto], [((leng
 generarTabla([], _P, T)-> T;
 generarTabla([Individuo|Resto], P, T)-> generarTabla(Resto, P, T++[((length(Individuo)*length(Individuo)) - fitness(Individuo))/sumaFitness(P)]).
 
-
 %Selecciona un individuo a partir de una tabla acumulada y un valor al azar.
 %Recibe: Tabla =  Tabla acumulada.
 %		 P = Población.
@@ -146,10 +143,8 @@ seleccionarDeTabla([H|T], [_Individuo|Resto], Valor) when H < Valor-> selecciona
 %Recibe: P = Población
 %		 TP: Tamaño de la población.
 %Retorna: Una lista con los dos individuos a cruzar.
-seleccion([Individuo|Resto], TP)->
-if (TP >= 2)->seleccion([Individuo|Resto], TP, [seleccionarDeTabla(generarAcumulada(generarTabla([Individuo|Resto])), [Individuo|Resto], random:uniform())]);
-	true->Individuo
-end.
+seleccion([Individuo|Resto], TP) when TP >= 2 -> seleccion([Individuo|Resto], TP, [seleccionarDeTabla(generarAcumulada(generarTabla([Individuo|Resto])), [Individuo|Resto], random:uniform())]);
+seleccion([Individuo|_Resto], _TP) -> Individuo.
 %Sele: Primer individuo selecto(para eliminar de la población).
 seleccion([Individuo|Resto], _TP, Sele)-> Sele++[seleccionarDeTabla(generarAcumulada(generarTabla(eliminarDePoblacion([Individuo|Resto], Sele))), eliminarDePoblacion([Individuo|Resto], Sele), random:uniform())].
 
@@ -158,15 +153,12 @@ seleccion([Individuo|Resto], _TP, Sele)-> Sele++[seleccionarDeTabla(generarAcumu
 %		 G2 = El segundo gen a realizarle el corte.
 %		 N = El tamaño de los genes.
 %Retorna: Una lista con 4 elementos, los 2 cortes de cada gen.
-corte(G1, G2, N)-> corte(G1, G2, random:uniform(N), 0, [], []).
-corte(G1, G2, N, N, P1, P2)-> append(append([G1], [P1]), append([G2], [P2]));
-corte([H|T], [H2|T2], N, C, P1, P2)-> corte(T, T2, N, C+1, append([H], P1), append([H2], P2)).
-
+corte(G1, G2) -> {split(length(G1) div 2, G1), split(length(G2) div 2, G2)}.
 
 %Función que muta un gen.
 %Recibe: G = Gen a mutar.
 %		 N = Largo del gen.
-mutar(G, N)->mutarEnPosicion(G, N, random:uniform(N), 0, []).%Se selecciona la posición de forma random.
+mutar(G, N) -> mutarEnPosicion(G, N, random:uniform(N), 0, []).%Se selecciona la posición de forma random.
 
 %Función que muta el alelo de gen en una posicón dada.
 %Recibe: G = Gen a mutar.
@@ -183,14 +175,13 @@ mutarEnPosicion([H|T], N, Pos, C, Res)-> mutarEnPosicion(T, N, Pos, C+1, append(
 %		 G2 = El segundo gen a cruzar.
 %		 P = Probabilidad de mutación.
 %Retorna: Lista con los 2 nuevos individuos.
-cruce(P, Prob)->cruce(getAt(P, 1), getAt(P, 2), Prob).
-cruce(G1, G2, P)->cruce_aux(G1, G2, P, random:uniform()).
-cruce_aux(G1, G2, P, Rand)->
-if(P >= Rand)-> cruce(corte(mutar(G1, length(G1)), G2, length(G1)));
-	true->cruce(corte(G1, G2, length(G1)))
-end.
-cruce(M)-> append([getAt(M,1)++getAt(M,4)], [getAt(M,2)++getAt(M,3)]).
+cruce(P, Prob) -> cruce(getAt(P, 1), getAt(P, 2), Prob).
+cruce(G1, G2, P) -> cruce_aux(G1, G2, P, random:uniform()).
 
+cruce_aux(G1, G2, P, Rand) when P >= Rand -> cruce(corte(mutar(G1, length(G1)), G2));
+cruce_aux(G1, G2, _P, _Rand) -> cruce(corte(G1, G2)). 
+
+cruce(M) -> append([element(1, element(1, M)) ++ element(2, element(2, M))], [element(1, element(2, M)) ++ element(2, element(1, M))]).
 
 
 %Función que agrega el cruce a la nueva población.
@@ -200,39 +191,44 @@ cruce(M)-> append([getAt(M,1)++getAt(M,4)], [getAt(M,2)++getAt(M,3)]).
 agregarCruce(_P, [])->[];
 agregarCruce(P, [[H|T]|REST])-> append(append(P, [[H|T]]), REST). 
 
-
 %Función que crea una nueva generación de individuos.
 %Recibe: Pv = La población vieja.
 %		 N = Cantidad de individuos a crear.
-%		 P = Probabilidad de mutación.
+%		 Mut = Probabilidad de mutación.
 %Retorna: Una lista de individuos, lo que es la nueva población.
-crearNuevaPoblacion(PV, N, P)-> crearNuevaPoblacion(PV, N, P, 0, cruce(seleccion(PV, length(PV)), P), []).
-%C: Contador de individuos.
+crearNuevaPoblacion(PV, N, Mut, si) -> crearNuevaPoblacion(PV, N, Mut, 	cruce(seleccion(PV, length(PV)), Mut), [mejorDePoblacion(PV)]);
+crearNuevaPoblacion(PV, N, Mut, _Elit) -> crearNuevaPoblacion(PV, N, Mut, cruce(seleccion(PV, length(PV)), Mut), []).
 %NP: La nueva población.
-crearNuevaPoblacion(_PV, N, _P, C, _Cru, NP) when C >= N -> NP;
-crearNuevaPoblacion(PV, N, P, C, Cru, NP)-> crearNuevaPoblacion(PV, N, P, C+1, cruce(seleccion(PV, length(PV)), P), agregarCruce(NP, Cru)).
-
-
+crearNuevaPoblacion(_PV, N, _Mut, _Cru, NP) when length(NP) >= N -> NP;
+crearNuevaPoblacion(PV, N, Mut, Cru, NP) -> crearNuevaPoblacion(PV, N, Mut, cruce(seleccion(PV, length(PV)), Mut), agregarCruce(NP, Cru)).
 
 %Función que indica si hay un individuo solución dentro de una pobalación.
 %Recibe: Población.
 %Retorna: El individuo solución.
-solucion([Individuo|Resto])->solucion(Resto, fitness(Individuo), Individuo).
-solucion([], F, S)-> 
-	if(F==0)->S;
-		true->[]
-	end;
-solucion([Individuo|Resto], F, _S) when F > 0-> solucion(Resto, fitness(Individuo), Individuo);
-solucion([_Individuo|_Resto], F, S) when F == 0-> S.
+solucion([Individuo|Resto]) -> solucion(Resto, fitness(Individuo), Individuo).
+solucion([], 0, S) -> S; 
+solucion([], _F, _S) -> [];
+solucion([Individuo|Resto], F, _S) when F > 0 -> solucion(Resto, fitness(Individuo), Individuo);
+solucion([_Individuo|_Resto], 0, S) -> S.
+
+nreinas(N, Pob, Mut, {limit, Gen, Elit}) -> nreinas_gen(N, Pob, Mut, Gen, Elit);
+nreinas(N, Pob, Mut, {unlimit, Elit}) -> nreinas_inf(N, Pob, Mut, Elit);
+nreinas(N, Pob, Mut, {hilos, Cant, Tup}) -> nreinas_hilos(Cant, [N, Pob, Mut, Tup]).
 
 %Función que a partir de una población al azar genera una solución.
 %Recibe: N = Tamaño del tablero.
 %		 Pob = Tamaño de la población.
 %		 Mut = Probabilidad de mutación.
-nreinas(N, Pob, Mut)-> nreinas(N, Pob, Mut, generarPoblacion(N, Pob)).
-nreinas(N, Pob, Mut, P)-> nreinas(N, Pob, Mut, P, solucion(P)).
-nreinas(N, Pob, Mut, P, S)-> 
-	if(S==[])-> nreinas(N, Pob, Mut, crearNuevaPoblacion(P, Pob, Mut), solucion(P));
-		true-> S
-	end.
+nreinas_gen(N, Pob, Mut, MaxGen, Elit) -> nreinas_gen(N, Pob, Mut, generarPoblacion(N, Pob), MaxGen, Elit).
+nreinas_gen(N, Pob, Mut, P, MaxGen, Elit) -> nreinas_gen(N, Pob, Mut, P, 1, MaxGen, Elit, solucion(P)).
+nreinas_gen(N, Pob, Mut, P, NGen, MaxGen, Elit, []) -> nreinas_gen(N, Pob, Mut, crearNuevaPoblacion(P, Pob, Mut, Elit), NGen+1, MaxGen, Elit, solucion(P));
+nreinas_gen(_N, _Pob, _Mut, _P, MaxGen, MaxGen, _Elit, S) -> S, io:format("~p~n~n", ["Sin solucion"]);
+nreinas_gen(_N, _Pob, _Mut, _P, _NGen, _MaxGen, _Elit, S) -> printIndividuo(S), io:format("~p~n~n", [printIndividuo(S)]).
 
+nreinas_inf(N, Pob, Mut, Elit) -> nreinas_inf(N, Pob, Mut, generarPoblacion(N, Pob), Elit).
+nreinas_inf(N, Pob, Mut, P, Elit) -> nreinas_inf(N, Pob, Mut, P, Elit, solucion(P)).
+nreinas_inf(N, Pob, Mut, P, Elit, []) -> nreinas_inf(N, Pob, Mut, crearNuevaPoblacion(P, Pob, Mut, Elit), Elit, solucion(P));
+nreinas_inf(_N, _Pob, _Mut, _P, _Elit, S) -> printIndividuo(S), io:format("~p~n~n", [printIndividuo(S)]).
+
+nreinas_hilos(1, Params) -> spawn(geneticos, nreinas, Params);
+nreinas_hilos(N, Params) -> spawn(geneticos, nreinas, Params), nreinas_hilos(N-1, Params).
