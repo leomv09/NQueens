@@ -38,9 +38,7 @@ swap(List, S1, S2) -> {List2,[F|List3]} = lists:split(S1-1,List),
 % Recibe: Tab = Tamaño del tablero.
 %         Pob = Tamaño de la población.
 % Retorna: Lista de individuos.
-generarPoblacion(Tab, Pob) -> generarPoblacion(Tab, Pob, 0).
-generarPoblacion(_Tab, Pob, Pob) -> [];
-generarPoblacion(Tab, Pob, C) -> [crearIndividuo(Tab)] ++ generarPoblacion(Tab, Pob, C+1).
+generarPoblacion(Tab, Pob) -> [crearIndividuo(Tab) || _X <- seq(1, Pob)].
 
 % Crea un individuo.
 % Recibe: N = Cantidad de genes del individuo.
