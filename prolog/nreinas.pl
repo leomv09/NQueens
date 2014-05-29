@@ -17,9 +17,16 @@
 
 nreinas(N, Solucion) :-
 	generarTablero(N, Tablero),
-	permutation(Tablero, TableroPermutado),
-	noChocan(TableroPermutado),
-	convertirTablero(N, TableroPermutado, Solucion).
+  nreinas(N, Tablero, [], Resultado),
+  convertirTablero(N, Resultado, Solucion).
+
+nreinas(0, _Tablero, Solucion, Solucion).
+
+nreinas(Fila, Tablero, Reinas, Solucion) :-
+    quitar(Tablero, Columna, Tablero1),
+    noChocan(Fila, Columna, Reinas),
+    Fila1 is Fila-1,
+    nreinas(Fila1, Tablero1, [[Fila,Columna]|Reinas], Solucion).
 
 % generarTablero(N, Tablero).
 % Genera un tablero de tamaño N.
@@ -28,9 +35,46 @@ nreinas(N, Solucion) :-
 
 generarTablero(0, []) :- !.
 
-generarTablero(N, [H|T]) :-
-	H is N - 1,
-	generarTablero(H, T).
+generarTablero(N, [N|T]) :-
+	N1 is N-1,
+	generarTablero(N1, T).
+
+% choca(Fila1, Columna1, Fila2, Columna2).
+% Comprueba si una reina se ataca con otra.
+% Fila1 : Fila de la primera reina.
+% Columna1 : Columna de la primera reina.
+% Fila2 : Fila de la segunda reina.
+% Columna2 : Columna de la segunda reina.
+
+choca(F1, C1, F2, C2) :-
+    Sum is F1+C1,
+    Sum is F2+C2.
+    
+choca(F1, C1, F2, C2) :-
+    Sub is F1-C1,
+    Sub is F2-C2.
+
+% noChocan(Fila, Columna, Tablero).
+% Comprueba si dado un tablero ninguna de sus reinas se ataca entre si.
+% Fila : Fila actual.
+% Columna : Columna actual.
+% Tablero : El tablero a comprobar.
+
+noChocan(_Fila, _Columna, []).
+
+noChocan(Fila, Columna, [[F,C]|Resto]) :-
+    \+ choca(Fila, Columna, F, C),
+    noChocan(Fila, Columna, Resto).
+
+% quitar(Lista, Elemento, Resultado).
+% Elimina un elemento de una lista.
+% Lista : Lista original.
+% Elemento : Elemento a eliminar.
+% Resultado : En donde se guardará la lista sin el elemento.
+
+quitar([H|T], H, T).
+
+quitar([H1|T1], X, [H1|T2]) :- quitar(T1, X, T2).
 
 % convertirTablero(N, Tablero, Salida).
 % Convierte un tablero a su representación gráfica.
@@ -50,40 +94,16 @@ convertirTablero(N, [Fila|RestoTablero], [Salida|RestoSalida]) :-
 % Fila : La fila a convertir.
 % Salida : Donde se guardará la representación gráfica de la fila.
 
-convertirFila(N, Fila, Salida) :- convertirFila(N, Fila, 0, Salida), !.
+convertirFila(N, Fila, Salida) :- convertirFila(Fila, N, 0, Salida), !.
 
-convertirFila(N, _Fila, N, []) :- !.
+convertirFila(_Fila, N, N, '') :- !.
 
-convertirFila(N, Fila, Fila, ['Q'|Resto]) :-
-	Contador is Fila + 1,
-	convertirFila(N, Fila, Contador, Resto).
+convertirFila([F,C], N, C, Salida) :-
+	Contador1 is C+1,
+	convertirFila([F,C], N, Contador1, Resto),
+	atom_concat('Q', Resto, Salida).
 
-convertirFila(N, Fila, Contador, ['_'|Resto]) :-
-	Contador1 is Contador + 1,
-	convertirFila(N, Fila, Contador1, Resto).
-
-% noChocan(Tablero).
-% Comprueba si dado un tablero ninguna de sus reinas se ataca entre si.
-% Tablero : El tablero a comprobar.
-
-noChocan([]) :- !.
-
-noChocan([Fila|RestoTablero]) :-
-	\+ choca(Fila, RestoTablero),
-	noChocan(RestoTablero).
-
-% choca(Fila, Tablero).
-% Comprueba si una reina se ataca con alguna de las demás reinas del tablero.
-% Reina : Reina a comprobar.
-% Tablero : El tablero donde se encuentran las demás reinas.
-
-choca(Reina, Tablero) :- choca(Reina, 1, Tablero), !.
-
-choca(Reina, Profundidad, [Fila|_RestoTablero]) :-
-	Reina =:= Fila + Profundidad;
-	Reina =:= Fila - Profundidad;
-	Reina =:= Fila.
-
-choca(Reina, Profundidad, [_Fila|RestoTablero]) :-
-	Profundidad1 is Profundidad + 1,
-	choca(Reina, Profundidad1, RestoTablero).
+convertirFila([F,C], N, Contador, Salida) :-
+	Contador1 is Contador+1,
+	convertirFila([F,C], N, Contador1, Resto),
+	atom_concat('_', Resto, Salida).
