@@ -149,7 +149,7 @@ agregarCruce(P, [[H|T]|REST])-> append(append(P, [[H|T]]), REST).
 % Retorna: Una lista de individuos, lo que es la nueva población.
 crearNuevaPoblacion(PV, N, Mut, si) -> crearNuevaPoblacion(PV, N, Mut, cruce(seleccion(PV), Mut), [mejorDePoblacion(PV)]);
 crearNuevaPoblacion(PV, N, Mut, _Elit) -> crearNuevaPoblacion(PV, N, Mut, cruce(seleccion(PV), Mut), []).
-crearNuevaPoblacion(_PV, N, _Mut, _Cru, NP) when length(NP) >= N -> NP;
+crearNuevaPoblacion(_PV, N, _Mut, _Cru, NP) when length(NP) >= N -> NP, io:format("~p~n~n", [printIndividuo(mejorDePoblacion(NP))]);
 crearNuevaPoblacion(PV, N, Mut, Cru, NP) -> crearNuevaPoblacion(PV, N, Mut, cruce(seleccion(PV), Mut), agregarCruce(NP, Cru)).
 
 % Función que indica si hay un individuo solución dentro de una población.
